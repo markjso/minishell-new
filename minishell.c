@@ -25,11 +25,10 @@ int	main(int ac, char **av, char **envp)
 	sig_initialiser();// sets up the signal handling found in signal.c
 while (1)
     {      
-        if (takeInput(input) == 0)
+        if (take_input() == 0)
         {
 			//takes input from user and splits it into tokens found in process_input.c
 			parse_input(input, &g_program);
-            printf("token: %s\n", g_program.token[0]);
 			// if it is one of the builtin commands do it. Found in buitlin_utils.c
             if (is_builtin_cmd(&g_program))
             {
@@ -38,9 +37,9 @@ while (1)
             else
 			// else it is one of the standard shell commands so execute that with execmd. Found in execmd.c
             {
-                execmd(&g_program);
+                execmd(g_program.token);
             }
         }
     }
-    return EXIT_SUCCESS;
+    exit(g_program.exit_status);
 }

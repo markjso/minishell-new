@@ -41,4 +41,6 @@ void sig_initialiser(void)
     {
         printf("failed to catch the EOF signal\n");
     }
+	else
+	signal(SIGQUIT, SIG_IGN);
 }

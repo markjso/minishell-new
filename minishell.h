@@ -18,6 +18,7 @@
 # include <stdlib.h>
 # include <unistd.h>
 # include <signal.h>
+# include <stdbool.h>
 # include <sys/types.h>
 # include <sys/wait.h>
 # include <sys/stat.h>
@@ -34,6 +35,10 @@ typedef struct s_program
 {
     struct s_envar *envar;
 	char	**token;
+	char	**envp;
+	char	*prompt;
+	char	**path;
+	int		exit_status;
     // Other fields related to the shell's configuration and data
 } 	t_program;
 
@@ -46,10 +51,11 @@ typedef struct s_envar
 
 t_program g_program; // Global variable
 
-int		takeInput(char *str);
+int		take_input(void);
 void	init_global(void);
-char	*get_location(char *cmd);
-void	execmd(t_program *program);
+char	*get_command(char *path);
+void	process_input(char *str, t_program *program);
+void	execmd(char **cmds);
 void	do_builtins(char **builtin_id, t_program *program);
 int 	is_builtin_cmd(t_program *program);
 void	parse_input(char *str, t_program *program);
@@ -62,12 +68,26 @@ int		ft_strcmp(char *s1, char *s2);
 t_envar	*split_env_var(char **envp);
 t_envar	*find_env_var(char *name);
 t_envar	*init_env(char *name, char *value);
+char	*get_envar(char *token);
 void	add_env_var(t_envar *node);
 void	remove_env_var(char *name);
 void	print_env(void);
+int     count_envars(t_envar *envars);
+void	rebuild_envp(void);
 int		export_cmd(char **token);
+int 	get_exit_status(char **token);
 void	echo_cmd(char **token);
 void	printpwd(void);
 void	debugFunctionName(char* function_name);
+int		ft_alnum_word_len(char *str, int start);
+int		ft_is_not_white_space(int c);
+int		ft_is_quote(int c);
+int		ft_is_special_char(char *s1);
+int 	ft_is_white_space(int c);
+int	ft_not_whitespace_not_quote(int c);
+int	ft_is_valid_var_char(char c);
+int	ft_env_word_len(char *str);
+
+
 
 #endif
