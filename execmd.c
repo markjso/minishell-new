@@ -38,7 +38,7 @@ char	*get_command(char *path)
         //check if the command exists and if it does return it
 		if (access(tmp, F_OK) == 0)
 		{
-			tmp = path;
+			path = tmp;
             return (path);
 		}
 		free(tmp);
@@ -52,6 +52,7 @@ void execmd(char **cmds)
     debugFunctionName("EXECMD");
     char *path;
     pid_t pid;
+    int status;	
 
     pid = fork();
     if (pid < 0)
@@ -68,7 +69,7 @@ void execmd(char **cmds)
     path = get_command(path);
     if (path)
     {
-        execve(path, cmds, g_program.envp);
+        execve(cmds[0], cmds, g_program.envp);
     }
     printf("%s: command not found\n", path);
         g_program.exit_status = 1;
@@ -76,7 +77,8 @@ void execmd(char **cmds)
     }
     else
     {
-            wait(NULL);
+            waitpid(pid, &status, 0);
+	    g_program.exit_status = WEXITSTATUS(status);
             return;
     }
 }
