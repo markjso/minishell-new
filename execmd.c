@@ -14,45 +14,42 @@
 
 t_program g_program;
 
-char    *join_cmd(char *path, char *cmd)
+char	*get_location(char *cmd)
 {
-    char    *tmp;
-    char    *cmd_path;
-
-    //append "/" to the directory
-    tmp = ft_strjoin(path, "/");
-    //append the command name 
-    cmd_path = ft_strjoin(tmp, cmd);
-    return (cmd_path);
-}
-
-char	*get_command(char *path)
-{
-	char	*tmp;
+	char	**path_tokens;
+	char	*path;
+	char	*location;
 	int		i;
 
+	path = getenv("PATH");
+   	//split into directories
+	path_tokens = ft_split(path, ':');
 	i = 0;
-	while (g_program.path[i])
+	while (path_tokens[i])
 	{
-        tmp = join_cmd(g_program.path[i], path);
+		//append "/" to the directory
+		location = ft_strjoin(path_tokens[i], "/");
+        //append the command name 
+		location = ft_strjoin(location, cmd);
         //check if the command exists and if it does return it
-		if (access(tmp, F_OK) == 0)
+		if (access(location, F_OK) == 0)
 		{
-			path = tmp;
-            return (path);
+			ft_free_array(path_tokens);
+			return (location);
 		}
-		free(tmp);
+		free(location);
 		i++;
 	}
+	ft_free_array(path_tokens);
 	return (NULL);
 }
 
-void execmd(char **cmds)
+void execmd(t_program *program)
 {
     debugFunctionName("EXECMD");
-    char *path;
     pid_t pid;
-    int status;	
+    char *cmd;
+    char    *actual_cmd;
 
     pid = fork();
     if (pid < 0)
@@ -61,48 +58,41 @@ void execmd(char **cmds)
     }
     else if (pid == 0)
     {
-    path = getenv("PATH");
-    g_program.path = ft_split(path, ':');
+        cmd = program->token[0];
+        actual_cmd = get_location(cmd);
     // free(path);
-    rebuild_envp();
-    // path = g_program.token[0];
-    path = get_command(path);
-    if (path)
-    {
-        execve(cmds[0], cmds, g_program.envp);
-    }
-    printf("%s: command not found\n", path);
-        g_program.exit_status = 1;
-        exit(1);
-    }
-    else
-    {
-            waitpid(pid, &status, 0);
-	    g_program.exit_status = WEXITSTATUS(status);
+        if (actual_cmd == NULL)
+            error_and_exit("Command not found", 127);
+        if (execve(actual_cmd, program->token, program->envp) == -1)
+            error_and_exit("Failed to execute", 126);
+        else
+        {
+            wait(NULL);
             return;
+        }
     }
 }
 
-void	pipex(void)
-{
-	int		fd[2];
-	pid_t 	pid;
+// void	pipex(void)
+// {
+// 	int		fd[2];
+// 	pid_t 	pid;
 
-	pipe(fd);
-	pid = fork();
-	if (pid < 0)
-		printf("Error: did not fork\n");
-	if (pid)
-	{
-		close(fd[1]);
-		dup2(fd[1], 0);
-		close(fd[0]);
-	}
-	else
-	{
-		close(fd[1]);
-		dup2(fd[0], 1);
-		close(fd[0]);
-        execmd(g_program->token);
-	}
-}
+// 	pipe(fd);
+// 	pid = fork();
+// 	if (pid < 0)
+// 		printf("Error: did not fork\n");
+// 	if (pid)
+// 	{
+// 		close(fd[1]);
+// 		dup2(fd[1], 0);
+// 		close(fd[0]);
+// 	}
+// 	else
+// 	{
+// 		close(fd[1]);
+// 		dup2(fd[0], 1);
+// 		close(fd[0]);
+//         execmd(g_program->token);
+// 	}
+// }

@@ -25,6 +25,7 @@
 # include <readline/readline.h>
 # include <readline/history.h>
 # include <limits.h>
+# include <fcntl.h>
 # include "libft.h"
 # include <errno.h>
 
@@ -37,8 +38,9 @@ typedef struct s_program
 	char	**token;
 	char	**envp;
 	char	*prompt;
-	char	**path;
 	int		exit_status;
+	char    *redirect_file;
+	int is_redirect; 
     // Other fields related to the shell's configuration and data
 } 	t_program;
 
@@ -51,11 +53,11 @@ typedef struct s_envar
 
 t_program g_program; // Global variable
 
-int		take_input(void);
+int		take_input(char *input);
 void	init_global(void);
 char	*get_command(char *path);
 void	process_input(char *str, t_program *program);
-void	execmd(char **cmds);
+void	execmd(t_program *program);
 void	do_builtins(char **builtin_id, t_program *program);
 int 	is_builtin_cmd(t_program *program);
 void	parse_input(char *str, t_program *program);
@@ -64,6 +66,8 @@ void	ft_free_array(char **arr);
 void	sig_initialiser(void);
 int		ft_stdout(char *command, char *out_file);
 int		cd_command(char **token);
+int		check_for_redirect(t_program *program);
+void	do_redirect(t_program *program);
 int		ft_strcmp(char *s1, char *s2);
 t_envar	*split_env_var(char **envp);
 t_envar	*find_env_var(char *name);
@@ -84,9 +88,11 @@ int		ft_is_not_white_space(int c);
 int		ft_is_quote(int c);
 int		ft_is_special_char(char *s1);
 int 	ft_is_white_space(int c);
-int	ft_not_whitespace_not_quote(int c);
-int	ft_is_valid_var_char(char c);
-int	ft_env_word_len(char *str);
+int		ft_not_whitespace_not_quote(int c);
+int		ft_is_valid_var_char(char c);
+int		ft_env_word_len(char *str);
+void    error_message(char *message, int status);
+void    error_and_exit(char *message, int status);
 
 
 
