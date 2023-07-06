@@ -39,11 +39,17 @@ void	remove_redirect(char *redirector)
 	g_program.token = new;
 }
 
+void restore_stdout()
+{
+    int stdout_fd = dup(STDOUT_FILENO);  // Save the original standard output file descriptor
+    dup2(stdout_fd, STDOUT_FILENO);     // Restore the standard output
+    close(stdout_fd);
+}
+
 int std_output(t_program *program)
 {
 	debugFunctionName("STD_OUT");
 	int fd;
-	int stdout_fd;
 	char *file;
 
 	file = g_program.redirect_file;
@@ -54,91 +60,103 @@ int std_output(t_program *program)
 	if (program->token[1][0] == '\0') // Check if only ">" is present
 	{
 		printf("Invalid command\n");
-		return -1;
+		return (-1);
 	}
 	fd = open(file, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (fd < 0)
 	{
 		perror("Error: \n");
 	}
-	stdout_fd = dup(STDOUT_FILENO); 
 	dup2(fd, STDOUT_FILENO);
 	close(fd);
-	dup2(stdout_fd, STDOUT_FILENO);
-	close(stdout_fd);
 	remove_redirect(">");
-	// execmd(program);
+	execmd(program);
+	restore_stdout();
 	return (0);
 	exit(g_program.exit_status);
 }
 
-// int std_input(char *file)
-// {
-// 	int	fd;
+int std_input(void)
+{
+	debugFunctionName("STD_IN");
+	int	fd;
+	char *file;
 
-// 	fd = open(file, O_RDONLY);
-// 	if (fd < 0)
-// 	{
-// 		perror("Error: \n");
-// 	}
-// 	dup2(fd, STDIN_FILENO);
-// 	close(fd);
-// 	remove_redirect("<");
-// 	return(-1);
-// }
+	file = g_program.redirect_file;
 
-// int output_append(char **tokens)
-// {
-// 	int fd;
+	printf("Redirect File: %s\n", file);
+	fd = open(file, O_RDONLY);
+	if (fd < 0)
+	{
+		perror("Error: \n");
+	}
+	dup2(fd, STDIN_FILENO);
+	close(fd);
+	remove_redirect("<");
+	return(-1);
+}
 
-// 	fd = open(file, O_CREAT | O_APPEND | O_WRONLY, 0644)
-// 	if (fd < 0)
-// 	{
-// 		perror("Error: \n");
-// 	}
-// 	dup2(fd, STDIN_FILENO);
-// 	close(fd);
-// 	remove_redirect(">>");
-// 	return ()
-// }
+int output_append(t_program *program)
+{
+	debugFunctionName("STD_APPEND");
+	int fd;
+	char *file;
 
-// int	get_heredoc(char *end_of_input)
-// {
-// 	char	*line;
-// 	int		fd[2];
+	file = g_program.redirect_file;
 
-// 	if (pipe(fd) < 0)
-// 		return (-1);
-// 	while (1)
-// 	{
-// 		line = readline("heredoc> ");
-// 		if (!line)
-// 			return (-1);
-// 		if (ft_strcmp(line, end_of_input) == 0)
-// 			break ;
-// 		write(fd[1], line, ft_strlen(line));
-// 		write(fd[1], "\n", 1);
-// 	}
-// 	close(fd[1]);
-// 	return (fd[0]);
-// }
+	printf("Redirect File: %s\n", file);
+    printf("Token 1: %s\n", program->token[1]);
+	fd = open(file, O_CREAT | O_WRONLY | O_APPEND , 0644);
+	if (fd < 0)
+	{
+		perror("Error: \n");
+	}
+	dup2(fd, STDOUT_FILENO);
+	close(fd);
+	// restore_stdout();
+	remove_redirect(">>");
+	execmd(program);
+	return (0);
+}
 
-// int	input_heredoc(char *file, char *delim)
-// {
-// 	int	fd;
+void get_heredoc(int fd, char *delim)
+{
+    char *line;
 
-// 	fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-// 	if (fd < 0)
-// 	{
-// 		perror("Error: \n");
-// 	}
-// 	get_heredoc(delim);
-// 	fd = open(file, O_RDWR, 0644);
-// 	dup2(fd, STDIN_FILENO);
-// 	close(fd);
-// 	remove_redir("<<"); 
-// 	return (-1);
-// }
+    while (1)
+	{
+		line = readline("heredoc> ");
+        if (ft_strcmp(line, delim) == 0)
+		{
+            close(fd);
+            break ;
+        }
+		// write(STDOUT_FILENO, line, strlen(line));
+        // write(STDOUT_FILENO, "\n", 1);
+        // free(line);
+    }
+	// line = whats been entered in the heredoc>
+	write(STDOUT_FILENO, line, strlen(line));
+    write(STDOUT_FILENO, "\n", 1);
+    free(line);
+}
+
+int input_heredoc(char *delim)
+{
+    debugFunctionName("HEREDOC");
+    int fd;
+    char *file;
+
+    file = g_program.redirect_file;
+    printf("Redirect File: %s\n", file);
+    fd = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        perror("Error: ");
+    }
+	get_heredoc(fd, delim);
+    close(fd);
+    return (0);
+}
 
 int check_for_redirect(t_program *program)
 {
@@ -148,31 +166,60 @@ int check_for_redirect(t_program *program)
     while (program->token[i])
     {
         if (!ft_strcmp(">", program->token[i]))
-        {
+		{
             program->is_redirect = 1;
-            return i; // Return the index of the redirect symbol
-        }
+			return (i);
+		}
+        else if (!ft_strcmp(">>", program->token[i]))
+		{
+            program->is_redirect = 2;
+			return (i);
+		}
+        else if (!ft_strcmp("<", program->token[i]))
+		{
+            program->is_redirect = 3;
+			return (i);
+		}
+        else if (!ft_strcmp("<<", program->token[i]))
+		{
+            program->is_redirect = 4;
+			return (i);
+		}
         i++;
     }
-    return -1; // No redirect symbol found
+    return (-1); // No redirect symbol found
 }
+
 
 void do_redirect(t_program *program)
 {
     debugFunctionName("DO_REDIR");
-    int redirect_index = check_for_redirect(program);
+    int redirect_index;
 
+	redirect_index = check_for_redirect(program);
+	printf("Redirect index: %d\n", redirect_index);
     if (redirect_index >= 0)
     {
-        if (program->token[redirect_index + 1] != NULL)
+        if (program->is_redirect == 1)
         {
             program->redirect_file = ft_strdup(program->token[redirect_index + 1]);
             std_output(program);
         }
-        else
+		else if (program->is_redirect == 2)
+		{
+			program->redirect_file = ft_strdup(program->token[redirect_index + 1]);
+            output_append(program);
+		}
+        else if (program->is_redirect == 3)
         {
-            error_message("No file specified", 1);
+            program->redirect_file = ft_strdup(program->token[redirect_index + 1]);
+            std_input();
         }
+		else if (program->is_redirect == 4)
+		{
+			program->redirect_file = ft_strdup(program->token[redirect_index + 1]);
+            input_heredoc(program->redirect_file);
+		}
     }
     else
     {
