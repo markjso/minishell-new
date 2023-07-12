@@ -31,13 +31,17 @@ while (1)
 			//takes input from user and splits it into tokens found in process_input.c
 			parse_input(input, &g_program);
 			// if it is one of the builtin commands do it. Found in buitlin_utils.c
-            if (check_for_redirect(&g_program))
+            if (check_for_redirect(&g_program) == 1 || check_for_redirect(&g_program) == 2)
             {
                 do_redirect(&g_program);
             }
             else if (is_builtin_cmd(&g_program))
             {
                 do_builtins(g_program.token, &g_program);
+            }
+            else if (check_for_pipe(&g_program))
+            {
+                execute_pipe_commands(); // Modified: Call execute_commands function to handle pipeline execution
             }
             else
 			// else it is one of the standard shell commands so execute that with execmd. Found in execmd.c

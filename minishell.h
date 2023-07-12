@@ -31,16 +31,19 @@
 
 # define MAXCOM 1000 // max number of letters to be supported
 # define MAXLIST 100 // max number of commands to be supported
+# define MAX_BUFFER 4096
 
 typedef struct s_program
 {
     struct s_envar *envar;
 	char	**token;
+	char	**commands;
 	char	**envp;
 	char	*prompt;
 	int		exit_status;
 	char    *redirect_file;
-	int is_redirect; 
+	int 	is_redirect;
+	int 	pid; //not sure yet if we are going to need this
     // Other fields related to the shell's configuration and data
 } 	t_program;
 
@@ -68,6 +71,9 @@ int		ft_stdout(char *command, char *out_file);
 int		cd_command(char **token);
 int		check_for_redirect(t_program *program);
 void	do_redirect(t_program *program);
+int 	check_for_pipe(t_program *program);
+void	execute_pipe_commands();
+char	*get_location(char *cmd);
 int		ft_strcmp(char *s1, char *s2);
 t_envar	*split_env_var(char **envp);
 t_envar	*find_env_var(char *name);
@@ -93,7 +99,7 @@ int		ft_is_valid_var_char(char c);
 int		ft_env_word_len(char *str);
 void    error_message(char *message, int status);
 void    error_and_exit(char *message, int status);
-
-
-
+void	free_exit(int code);
+int 	input_heredoc(char *delimiter);
+void	get_user_prompt(void);
 #endif
