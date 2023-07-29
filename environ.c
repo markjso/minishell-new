@@ -6,29 +6,13 @@
 /*   By: jmarks <jmarks@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/05/09 15:53:33 by jmarks            #+#    #+#             */
-/*   Updated: 2023/06/20 18:25:26 by jmarks           ###   ########.fr       */
+/*   Updated: 2023/07/28 20:13:28 by jmarks           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-t_program g_program;
-
-/*allocates memory for the struct and assigns
-name and value to the name and value fields.
-Returns a pointer to the new struct.*/
-t_envar	*init_env(char *name, char *value)
-{
-	t_envar	*new;
-
-	new = malloc(sizeof(t_envar));
-	if (!new)
-		return (NULL);
-	new->name = name;
-	new->value = value;
-	new->next = NULL;
-	return (new);
-}
+// t_program g_program;
 
 /*iterates through the envp array splitting each string
 by '=' using ft_split. Then calls init_env to create a 
@@ -63,31 +47,13 @@ t_envar	*split_env_var(char **envp)
 	return (start);
 }
 
-/*prints all the environment variables in the linked list
-Initialisses tmp to the head of the list and iterates 
-through printing the name and value fields. I then updates
-tmp to point to the next sturct in the list */
-
-void print_env(void)
-{
- debugFunctionName("PRINT_ENV");   
-	t_envar *tmp;
-
-	tmp = g_program.envar;
-    while (tmp)
-    {
-        printf("%s=%s\n", tmp->name, tmp->value);
-        tmp = tmp->next;
-    }
-}
-
 /* adds or updates an environment variable to the
 list of environment variables. Used by the export
 builtin function*/
 
 void add_env_var(t_envar *node)
 {
-    t_envar *tmp = g_program.envar;
+	t_envar *tmp = g_program.envar;
 
     // Check if an environment variable with the same name already exists
     while (tmp != NULL)

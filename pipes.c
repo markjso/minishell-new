@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   pipes.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jmarks <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: jmarks <jmarks@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 14:34:44 by jmarks            #+#    #+#             */
-/*   Updated: 2023/07/11 14:36:19 by jmarks           ###   ########.fr       */
+/*   Updated: 2023/07/28 22:03:46 by jmarks           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,8 +16,7 @@ extern	t_program	g_program;
 
 char	**realloc_back(char **arr, char *delim)
 {
-	debugFunctionName("REALLOC_ARRAY");
-    char	**ret;
+	char	**ret;
 	int		i;
 	int		len;
 
@@ -42,120 +41,128 @@ char	**realloc_back(char **arr, char *delim)
 	}
 	return (ret);
 }
-// check to see if input is a pipe
-int check_for_pipe(t_program *program)
+
+
+void last_command(void)
 {
-    debugFunctionName("CHECK_FOR_PIPES");
-    int i;
-
-    i = 0;
-    while(program->token[i])
-    {
-        if (ft_strcmp(program->token[i], "|") == 0)
-            return (1);
-        i++; // Found a pipeline command
-    }
-    return (0); // No pipeline command found
-}
-
-void	split_pipes(void)
-{
-	debugFunctionName("SPLIT_PIPES");
-    int     pid;
-    int		fd[2];
-	
-	pipe(fd);
-	pid = fork();
-	if (pid < 0)
-		printf("Error: did not fork\n");
-	if (pid)
-	{
-		if (!g_program.pid)
-        g_program.pid = pid;
-        close(fd[1]);
-		dup2(fd[0], 0);
-		close(fd[0]);
-        execve(g_program.commands[0], g_program.commands, g_program.envp);
-        // perror("Execve error");
-        // exit(1);
-	}
-	else
-	{
-		close(fd[0]);
-		dup2(fd[1], 1);
-		close(fd[1]);
-        // execve(g_program.commands[0], g_program.commands, g_program.envp);
-        waitpid(pid, NULL, 0);
-        
-	}
-}
-
-//populates the commands array with the commands before the "|"
-void	set_commands(void)
-{
-	debugFunctionName("SET_COMMANDS");
-    int		i;
-	int		j;
-	char	**current;
-
-	current = g_program.token;
-	i = 0;
-	while (current[i] && ft_strcmp("|", current[i]))
-		i++;
-	if (!current[i])
-	{
-		g_program.commands = current;
-	}
-	else
-	{
-		g_program.commands = malloc(sizeof(*g_program.commands) * (i + 1));
-		j = 0;
-		while (j < i)
-		{
-			g_program.commands[j] = current[j];
-			j++;
-		}
-		g_program.commands[i] = NULL;
-	}
-}
-
-/* separates the commands before with set commands 
-splits the pipe to open and close the communication 
-and gets the command after the pipe using realloc_back
-*/
-void	execute_pipe_commands(void)
-{
-	debugFunctionName("EXECUTE_PIPE_COMMANDS");
-    // int	i;
-
-	set_commands();
-   	split_pipes();
-    execve(g_program.commands[0], g_program.commands, g_program.envp);
-	// i = 0;
-	// while (g_program.token[i] && ft_strcmp("|", g_program.token[i]))
-	// {
-	// 	i++;
-	// }
-	// if (!ft_strcmp("|", g_program.token[i]))
-	// {
-	// 	g_program.token = realloc_back(g_program.token, "|");
-	// 	g_program.token = realloc_back(g_program.token, g_program.token[1]);
-	// }
-	// i = 0;
-	// free(g_program.commands);
-}
-
-void	last_command(void)
-{
-	debugFunctionName("LAST_COMMAND");
-    int	pid;
+	int pid;
 
 	if (!g_program.pid)
-		execmd(&g_program);
-	pid = fork();
-	if (!pid)
-		execmd(&g_program);
-	waitpid(g_program.pid, &g_program.exit_status, 0);
-	waitpid(pid, &g_program.exit_status, 0);
-	free_exit(g_program.exit_status);
+			execmd(&g_program);
+		pid = fork();
+		if (!pid)
+			execmd(&g_program);
+		waitpid(g_program.pid, &g_program.exit_status, 0);
+		waitpid(pid, &g_program.exit_status, 0);
+		ft_free_array(g_program.token);
+}
+
+void	set_commands(void)
+{
+    debugFunctionName("SET_CMDS");
+    char **tokens;
+    int i;
+	int j;
+
+    tokens = g_program.token;
+	i = 0; 
+	
+	while (tokens[i] && ft_strcmp("|", tokens[i]))
+		i++;
+	if (!tokens[i])
+    {
+        g_program.commands = tokens;
+    }
+	else
+	g_program.commands = malloc(sizeof(*g_program.commands) * (i + 1));
+	j = 0;
+	while (j < i)
+	{
+		g_program.commands[j] = tokens[j];
+		j++;
+	}
+    g_program.commands[i] = NULL;
+}
+
+void	execute_commands(void)
+{
+	int	i;
+
+	set_commands();
+	do_pipe();
+	i = -1;
+	while (g_program.token[i] && ft_strcmp("|", g_program.token[i]))
+	{
+		i++;
+	}
+	if (!ft_strcmp("|", g_program.token[i]))
+	{
+		g_program.token = realloc_back(g_program.token, "|");
+		g_program.token = realloc_back(g_program.token,
+				g_program.token[0]);
+	}
+	i = -1;
+	free(g_program.commands);
+}
+
+void handle_pipe(void) 
+{
+    debugFunctionName("HANDLE_PIPE");
+    // t_token_list *curr = root;
+    int i = 0;
+	if (!g_program.token[i])
+	exit (0);
+    while (g_program.token[i])
+    {
+        if (!ft_strcmp("|", g_program.token[i])) 
+        {
+            execute_commands();
+			i = -1;
+		}
+		i++;
+	}
+	g_program.commands = g_program.token;
+	last_command();
+}
+
+void do_pipe(void)
+{
+    debugFunctionName("DO_PIPE");
+
+    int pipe_fd[2];
+	int pid;
+    pipe(pipe_fd);
+    pid = fork();
+    if (pid < 0)
+    {
+        perror("Error");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid)
+    {
+        // Child process
+        if (!g_program.pid)
+        {
+			g_program.pid = pid;
+			close(g_program.pipe_fd[1]);
+            if (dup2(g_program.pipe_fd[0], STDIN_FILENO) < 0)
+            {
+                perror("Error");
+                exit(EXIT_FAILURE);
+            }
+            close(g_program.pipe_fd[0]);
+        }
+        else
+        {
+            close(pipe_fd[0]);
+            if (dup2(pipe_fd[1], STDOUT_FILENO) < 0)
+            {
+                perror("Error");
+                exit(EXIT_FAILURE);
+            }
+            close(pipe_fd[1]);
+			execmd(&g_program);
+        }
+    }
 }

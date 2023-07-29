@@ -5,102 +5,59 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jmarks <jmarks@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/04/18 13:55:05 by jmarks            #+#    #+#             */
-/*   Updated: 2023/06/21 15:12:38 by jmarks           ###   ########.fr       */
+/*   Created: 2023/06/16 16:05:05 by jmarks            #+#    #+#             */
+/*   Updated: 2023/07/28 20:11:39 by jmarks           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-t_program g_program;
+// t_program g_program;
 
-void	printpwd(void)
-{
-	char	pwd[256];
-
-	getcwd(pwd, sizeof(pwd));
-	printf("\nDir: %s", pwd);
-    g_program.exit_status = 0;
-}
-
-/*
-Write to screen the text folloing the command `echo`. 
-Checks for the -n flag. Must expand this description.
+/* checks if the input in position token[0]
+is one of the builtin shell functions.
+Returns 1 if it is and 0 if it is not.
 */
 
-static	bool	check_n_flag(char *str)
+int is_builtin_cmd()
 {
-	if (!*str)
-		return (false);
-	if (*str == '-' && *(str + 1))
-	{
-		str++;
-		while (*str == 'n')
-			str++;
-	}
-	if (*str)
-		return (false);
-	return (true);
-}
-
-void echo_cmd(char **token)
-{
-    debugFunctionName("ECHO_CMD");
-    int i = 1;
-    bool    flag;
-    flag = false;
-
-    // Check if -n option was passed
-    while (token[i] && check_n_flag(token[i]))
-    {
-        flag = true;
-        i++;
-    }
-    // Print the arguments
-    while (token[i])
-    {
-        printf("%s ", token[i]);
-        if (token[i])
-        i++;
-    }
-    // Print a new line only if -n option was not passed and there are arguments
-    if (!flag && (i > 1))
-        printf("\n");
-        g_program.exit_status = 0;
-}
-
-int	export_cmd(char **token)
-{
-	char	**split_env;
-	char	*name;
-	char	*value;
-	t_envar	*node;
-
-	if (token[1] == NULL)
-    {
-        // No arguments provided, print the environment variables
-        print_env();
+    debugFunctionName("IS_BUILTIN");
+    //checks if the token array is empty or the first token is NULL
+    if (!g_program.token || !g_program.token[0])
+    // if either of these is true it means there is nothing to check
         return (0);
+    if (ft_strcmp(g_program.token[0], "echo") == 0 
+        || ft_strcmp(g_program.token[0], "cd") == 0 
+        || ft_strcmp(g_program.token[0], "pwd") == 0 
+        || ft_strcmp(g_program.token[0], "export") == 0 
+        || ft_strcmp(g_program.token[0], "unset") == 0 
+        || ft_strcmp(g_program.token[0], "env") == 0 
+        || ft_strcmp(g_program.token[0], "exit") == 0)
+    {
+        return (1);
     }
-	split_env = ft_split(token[1], '=');
-	if (!split_env[1])
-		return (1);
-	name = ft_strdup(split_env[0]);
-	value = ft_strdup(split_env[1]);
-	node = find_env_var(name);
-	if (node == NULL)
-	{
-		node = init_env(name, value);
-		add_env_var(node);
-	}
-	else
-	{
-		free(node->value);
-		node->value = value;
-	}
-	return (0);
+    return (0);
 }
 
-/*
-Always returns 0?
-*/
+/* if the is_builtin_cmd check passes then it
+moves into the do_builtins function to execute
+the appropriate builtin*/
+
+void	do_builtins(char **builtin_id, t_program *program)
+{
+	debugFunctionName("DO_BUILTIN");
+    if (ft_strcmp(builtin_id[0], "echo") == 0)
+    	echo_cmd(program->token);
+    if (ft_strcmp(builtin_id[0], "cd") == 0)
+	    cd_command(program->token);
+    if (ft_strcmp(builtin_id[0], "pwd") == 0)
+        printpwd();
+    if (ft_strcmp(builtin_id[0], "export") == 0)
+	    export_cmd(program->token);
+    if (ft_strcmp(builtin_id[0], "unset") == 0)
+	    remove_env_var(program->token[1]);
+    if (ft_strcmp(builtin_id[0], "env") == 0)
+        print_env();
+    if (ft_strcmp(builtin_id[0], "exit") == 0)
+	    exit_cmd(program->token);
+}

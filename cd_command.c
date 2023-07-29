@@ -6,13 +6,13 @@
 /*   By: jmarks <jmarks@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/05/09 11:52:18 by jmarks            #+#    #+#             */
-/*   Updated: 2023/06/20 17:32:19 by jmarks           ###   ########.fr       */
+/*   Updated: 2023/07/28 20:12:34 by jmarks           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-t_program g_program;
+// t_program g_program;
 
 void change_dirs(t_envar *pwd, t_envar *oldpwd, char *cwd)
 {
@@ -36,16 +36,16 @@ int cd_command(char **tokens)
     {
         if (getcwd(cwd, sizeof(cwd)) == NULL)
         {
-            printf("cd: Failed to get current directory\n");
-            return (1);
+            (ft_putstr_fd("cd", 2),error_message("Not a directory", 20));
+            // return (1);
         }
         else
             change_dirs(pwd, oldpwd, cwd);
     }
     else
     {
-        printf("cd: No such file or directory\n");
-        return (1);
+        (ft_putstr_fd("cd", 2),error_message("No such file or directory", 2));
+        // return (1);
     }
     return (0);
 }

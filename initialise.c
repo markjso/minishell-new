@@ -5,93 +5,145 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: jmarks <jmarks@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/04/12 15:44:30 by jmarks            #+#    #+#             */
-/*   Updated: 2023/06/20 18:08:12 by jmarks           ###   ########.fr       */
+/*   Created: 2023/04/17 15:30:25 by jmarks            #+#    #+#             */
+/*   Updated: 2023/07/28 20:16:34 by jmarks           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-// void	init_free(char *input)
-// {
-// 	if (input)
-// 		free(input);
-// 	// if (temp)
-// 	// 	free(temp);
-	
-// }
+// t_program g_program;
 
-void	get_user_prompt(void)
+t_envar	*find_env(t_envar *envars, char *name)
 {
-	char	*prompt;
-	char	*username;
+	debugFunctionName("FIND_ENV");
+	t_envar		*temp;
 
-	username = getenv("USER");
-	prompt = ft_strjoin(username, "@>>$ ");
-	g_program.prompt = prompt;
-	free (prompt);
+	temp = envars;
+	while (temp != NULL)
+	{
+		if (ft_strcmp(temp->name, name) == 0)
+			return (temp);
+		temp = temp->next;
+	}
+	return (NULL);
 }
 
-int	take_input(char *input)
+static char	*get_path(char const *currentPath, char const *cmd)
 {
-	char	*user_input;
+	debugFunctionName("GET_PATH");
+	char	*rtn;
 
-	get_user_prompt();
-	user_input = readline(g_program.prompt); // Return is MALLOCED
-	if (!user_input) // Input is username and '$'.  IF username doesn't exist or Ctrl-d, exit program in error. 
-	{
-		printf("%s exit\n", input);
-		// free(input);
-		exit(1);
-	}
-	if (ft_strlen(user_input) != 0) // If user inputs text, even nonsense, this is called. 
-	{
-		ft_strlcpy(input, user_input, MAXCOM - 1);
-		add_history(user_input);
-		free(user_input);
-		return (0);
-	}
-	else // Else the user inputed nothing. 
-	{
-		free(user_input);
-		return (1);
-	}
+	if (*cmd == '/')
+		rtn = ft_strdup(cmd);
+	else if (!ft_strncmp(cmd, "./", 2))
+		rtn = ft_strjoin((find_env(g_program.envar, "PWD")->value),
+				ft_strjoin("/", cmd));
+	else
+		rtn = ft_strjoin(currentPath, ft_strjoin("/", cmd));
+	return (rtn);
 }
 
-/* Initialse PWD and OLDPWD to be used in the "cd" butilin
-This ensures that they are properly set when the shell
-starts up*/
-
-void init_env_vars(void)
+char	**get_full_path(void)
 {
-	char cwd[256];
-    t_envar *pwd;
-    t_envar *oldpwd;
-	if (getcwd(cwd, sizeof(cwd)) == NULL)
-    {
-        printf("Failed to get current directory\n");
-        exit(1);
+	debugFunctionName("GET_FULL_PATH");
+	char			**env_paths;
+	t_envar const	*path;
+
+	path = find_env(g_program.envar, "PATH");
+	if (path)
+		env_paths = ft_split(path->value, ':');
+	else
+		env_paths = NULL;
+	return (env_paths);
+}
+
+char	*get_path_for_cmd(char **env_paths, char const *cmd)
+{
+	debugFunctionName("GET_CMD_PATH");
+	char	*path;
+	int		i;
+
+	i = 0;
+	while (env_paths[i])
+	{
+		path = get_path(env_paths[i], cmd);
+		if (access(path, F_OK) == 0)
+			return (path);
+		free(path);
+		i++;
+	}
+	return (NULL);
+}
+
+
+void exe_pipe_cmd(char **command_tokens) {
+    debugFunctionName("EXEC_PIPE_CMD");
+    char **paths;
+    char *exec_path;
+    pid_t pid;
+    int status;
+
+    pid = fork();
+    if (pid == 0) {
+        if (command_tokens[0][0] == '/') {
+            if (execve(command_tokens[0], command_tokens, g_program.envp) == -1) {
+                perror("Error");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        paths = get_full_path();
+        exec_path = get_path_for_cmd(paths, command_tokens[0]);
+        if (!paths || !exec_path) {
+            perror("Command not found");
+            exit(EXIT_FAILURE);
+        }
+        if (execve(exec_path, command_tokens, g_program.envp) == -1) {
+            perror("Error");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            g_program.exit_status = WEXITSTATUS(status);
+        }
     }
-	pwd = init_env(ft_strdup("PWD"), ft_strdup(cwd));
-    oldpwd = init_env(ft_strdup("OLDPWD"), ft_strdup(cwd));
-    
-    add_env_var(pwd);
-    add_env_var(oldpwd);
 }
 
-/* sets up the g_program global structure
-allocates memory to token to hold an array
-of char pointers and sets each element to NULL.
-This ensures that array is empty and ready to 
-store data.*/
-
-void init_global(void)
+void	execmd(t_program *program)
 {
-    g_program.token = (char **)malloc((MAXLIST + 1) * sizeof(char *));
-    for (int i = 0; i < MAXLIST + 1; i++) {
-        g_program.token[i] = NULL;
-	g_program.envp = NULL;
-	g_program.exit_status = 0;
-	init_env_vars();
+	debugFunctionName("EXEC_CMD");
+	char	**paths;
+	char	*exec_path;
+    char	*cmds;
+    pid_t	pid;
+    int		status;
+
+	pid = fork();
+	cmds = program->token[0];
+    if (pid == 0)
+    {
+    if (cmds[0] == '/')
+	{
+		if (execve(&cmds[0], program->token, program->envp) == -1)
+			error_and_exit("command cannot be executed", 126);
+	}
+	paths = get_full_path();
+	exec_path = get_path_for_cmd(paths, &cmds[0]);
+	if (!paths || !exec_path)
+		    error_and_exit("command not found", 127);
+	if (execve(exec_path, program->token, program->envp) == -1)
+		error_and_exit("command cannot be executed", 126);
+    }
+    else
+    {
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status))
+        {
+			g_program.exit_status = WEXITSTATUS(status);
+        }
+        // (ft_putstr_fd("minishell", 2), error_message("command not found", 127));
+        return;
     }
 }
